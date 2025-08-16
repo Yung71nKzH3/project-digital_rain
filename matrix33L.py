@@ -273,7 +273,6 @@ def draw_seamless_rain_to_buffer(messages_data, color_pair):
                         if 0 <= msg_y < height and 0 <= msg_x < width:
                             current_buffer[msg_y][msg_x] = (char, color_pair)
 
-
 def refresh_dirty_pixels(stdscr):
     for y in range(screen_height):
         for x in range(screen_width):
@@ -283,65 +282,6 @@ def refresh_dirty_pixels(stdscr):
                     stdscr.addstr(y, x, char, color)
                 except curses.error:
                     pass
-
-def typing_test_loop(stdscr, color_pair):
-    global OUTPUT_MESSAGE, OUTPUT_FORMAT, OUTPUT_EFFECT_DURATION, animation_delay
-    
-    stdscr.nodelay(True)
-    curses.curs_set(1)
-    stdscr.clear()
-
-    quote_to_type = TYPING_QUOTE
-    typed_text = ""
-    start_time = None
-    
-    while True:
-        stdscr.erase()
-        height, width = stdscr.getmaxyx()
-        
-        quote_y = height // 2 - 2
-        input_y = height // 2
-        
-        stdscr.addstr(quote_y, (width - len(quote_to_type)) // 2, quote_to_type, color_pair)
-        stdscr.addstr(input_y, (width - len(quote_to_type)) // 2, typed_text, color_pair)
-        stdscr.refresh()
-        
-        key = stdscr.getch()
-        
-        if key != -1:
-            if not start_time:
-                start_time = time.time()
-                
-            if key == curses.KEY_ENTER or key == ord('\n'):
-                if typed_text.strip() == quote_to_type:
-                    end_time = time.time()
-                    time_taken = end_time - start_time if start_time else 0
-                    words_per_minute = (len(typed_text.split()) / time_taken) * 60 if time_taken > 0 else 0
-                    
-                    OUTPUT_MESSAGE = f"WPM: {words_per_minute:.2f}\nAccuracy: 100.00%"
-                else:
-                    correct_chars = 0
-                    for i, char in enumerate(typed_text):
-                        if i < len(quote_to_type) and char == quote_to_type[i]:
-                            correct_chars += 1
-                    accuracy = (correct_chars / len(quote_to_type)) * 100 if len(quote_to_type) > 0 else 0
-                    
-                    time_taken = time.time() - start_time if start_time else 0
-                    words_per_minute = (len(typed_text.split()) / time_taken) * 60 if time_taken > 0 else 0
-                    
-                    OUTPUT_MESSAGE = f"WPM: {words_per_minute:.2f}\nAccuracy: {accuracy:.2f}%"
-
-                OUTPUT_FORMAT = "paragraph"
-                return OUTPUT_MESSAGE, OUTPUT_FORMAT
-
-            elif key == curses.KEY_BACKSPACE or key == ord('\b'):
-                typed_text = typed_text[:-1]
-            elif 32 <= key < 127:
-                if len(typed_text) < len(quote_to_type):
-                    typed_text += chr(key)
-        
-        time.sleep(ANIMATION_DELAY)
-    return None, None
 
 def main(stdscr):
     global streaks, screen_height, screen_width, current_buffer, last_buffer, input_buffer, OUTPUT_MESSAGE, OUTPUT_FORMAT, stats_display_timer, fade_out_active, fade_out_timer, APP_TO_LAUNCH, NOTEPAD_FILENAME_TO_OPEN, SHOULD_EXIT, typing_test_active
