@@ -1,3 +1,5 @@
+# This is the code for your matrix.py file.
+# ----------------------------------------
 import curses
 import random
 import time
@@ -156,7 +158,7 @@ COMMANDS = {
 }
 
 def command_processor(command_string):
-    global stats_display_timer, typing_test_active, fade_out_active, fade_out_timer, APP_TO_LAUNCH
+    global stats_display_timer, typing_test_active, fade_out_active, fade_out_timer
     parts = command_string.split(" ", 1)
     command = parts[0]
     args = parts[1] if len(parts) > 1 else ""
@@ -165,20 +167,14 @@ def command_processor(command_string):
         stats_display_timer = time.time() + STATS_DISPLAY_DURATION
         return "Displaying system stats...", "vertical"
     elif command == "type":
-        fade_out_active = True
-        fade_out_timer = time.time() + FADE_OUT_DURATION
-        APP_TO_LAUNCH = "type"
+        typing_test_active = True
         return "Starting typing test...", "vertical"
-    elif command == "tetris":
-        fade_out_active = True
-        fade_out_timer = time.time() + FADE_OUT_DURATION
-        APP_TO_LAUNCH = "tetris"
-        return "Starting Tetris...", "vertical"
-
+    
     if command in COMMANDS:
         return COMMANDS[command](args)
     else:
         return f"Error: '{command}' is not a valid command", "vertical"
+
 
 def create_streaks(width, height):
     streaks = []

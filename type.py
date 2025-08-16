@@ -1,6 +1,7 @@
 import curses
 import time
 import sys
+import os
 
 # --- Configuration ---
 TYPING_QUOTE = "The Matrix is a system, Neo. That system is our enemy."

@@ -5,14 +5,6 @@ import sys
 import os
 
 # --- Configuration ---
-MATRIX_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:'\"\\|,./<>?`~"
-ANIMATION_DELAY = 0.05
-MIN_STREAK_LENGTH = 10
-MAX_STREAK_LENGTH = 30
-MIN_STREAK_SPEED = 1
-MAX_STREAK_SPEED = 3
-STREAK_DENSITY = 0.5
-
 TETRIS_BOARD_WIDTH = 10
 TETRIS_BOARD_HEIGHT = 20
 TETROMINOES = [
@@ -34,26 +26,28 @@ TETROMINOES = [
 
 # Adjust this value to change the game speed
 FALL_SPEED = 0.8
+RAIN_SPEED = 0.05
 
 # --- Global Variables ---
+MATRIX_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:'\"\\|,./<>?`~"
 streaks = []
 screen_height, screen_width = 0, 0
-current_buffer = []
 
 def create_streaks(width, height):
     streaks = []
-    num_streaks = int(width * STREAK_DENSITY)
+    num_streaks = int(width * 0.5)
     for _ in range(num_streaks):
         x = random.randint(0, width - 1)
         y = random.randint(-height, 0)
-        length = random.randint(MIN_STREAK_LENGTH, MAX_STREAK_LENGTH)
-        speed = random.randint(MIN_STREAK_SPEED, MAX_STREAK_SPEED)
+        length = random.randint(10, 30)
+        speed = random.randint(1, 3)
         char_set = [random.choice(MATRIX_CHARS) for _ in range(length)]
         streaks.append({'x': x, 'y': y, 'length': length, 'speed': speed, 'char_set': char_set})
     return streaks
 
 def draw_seamless_rain_background(stdscr, color_pair):
-    stdscr.clear()
+    """Draws the falling rain to fill the background."""
+    stdscr.erase()
     height, width = stdscr.getmaxyx()
 
     for streak in streaks:
@@ -68,30 +62,29 @@ def draw_seamless_rain_background(stdscr, color_pair):
         
         if streak['y'] > height:
             streak['y'] = random.randint(-height, 0)
-            streak['length'] = random.randint(MIN_STREAK_LENGTH, MAX_STREAK_LENGTH)
-            streak['speed'] = random.randint(MIN_STREAK_SPEED, MAX_STREAK_SPEED)
+            streak['length'] = random.randint(10, 30)
+            streak['speed'] = random.randint(1, 3)
             streak['char_set'] = [random.choice(MATRIX_CHARS) for _ in range(streak['length'])]
 
 def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
+    """Draws the Tetris game board and pieces on top of the rain."""
     height, width = stdscr.getmaxyx()
     board_start_y = (height - TETRIS_BOARD_HEIGHT) // 2
     board_start_x = (width - TETRIS_BOARD_WIDTH * 2) // 2
     
+    # Draw a black rectangle in the center for the game board
     for y in range(TETRIS_BOARD_HEIGHT + 2):
-        if 0 <= board_start_y + y - 1 < height:
-            stdscr.addstr(board_start_y + y - 1, board_start_x - 1, "+" + "-" * (TETRIS_BOARD_WIDTH * 2) + "+", color_pair)
-    for y in range(TETRIS_BOARD_HEIGHT):
-        if 0 <= board_start_y + y < height:
-            stdscr.addstr(board_start_y + y, board_start_x - 1, "|", color_pair)
-            stdscr.addstr(board_start_y + y, board_start_x + TETRIS_BOARD_WIDTH * 2, "|", color_pair)
-    if 0 <= board_start_y + TETRIS_BOARD_HEIGHT < height:
-        stdscr.addstr(board_start_y + TETRIS_BOARD_HEIGHT, board_start_x - 1, "+" + "-" * (TETRIS_BOARD_WIDTH * 2) + "+", color_pair)
+        for x in range(TETRIS_BOARD_WIDTH * 2 + 2):
+            if 0 <= board_start_y + y - 1 < height and 0 <= board_start_x + x - 1 < width:
+                stdscr.addstr(board_start_y + y - 1, board_start_x + x - 1, " ", curses.color_pair(2))
 
+    # Draw the border and pieces
     for y in range(TETRIS_BOARD_HEIGHT):
         for x in range(TETRIS_BOARD_WIDTH):
             if board[y][x] == 1:
                 stdscr.addstr(board_start_y + y, board_start_x + x * 2, "[]", color_pair)
 
+    # Draw the current piece
     for y_piece, row in enumerate(current_piece['shape']):
         for x_piece, cell in enumerate(row):
             if cell == 1:
@@ -99,6 +92,7 @@ def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
                     char = random.choice(MATRIX_CHARS)
                     stdscr.addstr(board_start_y + current_piece['y'] + y_piece, board_start_x + (current_piece['x'] + x_piece) * 2, char + " ", color_pair)
     
+    # Draw the score
     score_y = board_start_y + TETRIS_BOARD_HEIGHT + 2
     score_x = board_start_x
     if 0 <= score_y < height:
@@ -126,6 +120,7 @@ def main(stdscr):
     if curses.has_colors():
         curses.start_color()
         curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_GREEN)
         color_pair = curses.color_pair(1)
     else:
         color_pair = 0
@@ -139,7 +134,7 @@ def main(stdscr):
     
     current_piece = {
         'shape': random.choice(TETROMINOES),
-        'x': TETRIS_BOARD_WIDTH // 2,
+        'x': TETRIS_BOARD_WIDTH // 2 - len(random.choice(TETROMINOES)[0]) // 2,
         'y': 0
     }
     
