@@ -23,9 +23,10 @@ INPUT_EFFECT_DURATION = 1.0
 # Output effect variables
 OUTPUT_EFFECT_DURATION = 3.0
 OUTPUT_MESSAGE = None
+OUTPUT_FORMAT = "vertical" # Default output format
 
 # New variables for on-demand stats and fade-out
-STATS_DISPLAY_DURATION = 2.3 #default: 5.0
+STATS_DISPLAY_DURATION = 5.0
 stats_display_timer = 0
 
 FADE_OUT_DURATION = 2.0
@@ -46,52 +47,78 @@ def calculate(expression):
     match = re.fullmatch(r"(\d+(\.\d+)?)\s*([-+*/])\s*(\d+(\.\d+)?)", expression)
     
     if not match:
-        return "Error: Invalid format"
+        return "Error: Invalid format", "vertical"
     
     try:
         num1 = float(match.group(1))
         operator = match.group(3)
         num2 = float(match.group(4))
     except (ValueError, IndexError):
-        return "Error: Invalid numbers"
+        return "Error: Invalid numbers", "vertical"
 
     if operator == '+':
-        return f"Result: {num1 + num2:.2f}"
+        return f"Result: {num1 + num2:.2f}", "vertical"
     elif operator == '-':
-        return f"Result: {num1 - num2:.2f}"
+        return f"Result: {num1 - num2:.2f}", "vertical"
     elif operator == '*':
-        return f"Result: {num1 * num2:.2f}"
+        return f"Result: {num1 * num2:.2f}", "vertical"
     elif operator == '/':
         if num2 == 0:
-            return "Error: Div by zero"
-        return f"Result: {num1 / num2:.2f}"
+            return "Error: Div by zero", "vertical"
+        return f"Result: {num1 / num2:.2f}", "vertical"
 
-    return "Error: Invalid operator"
+    return "Error: Invalid operator", "vertical"
+
+def list_notes():
+    notes_files = [f for f in os.listdir('.') if f.endswith('.json')]
+    if notes_files:
+        return "Saved Notes:\n" + "\n".join(notes_files), "paragraph"
+    else:
+        return "No saved notes found.", "paragraph"
+
+def shutdown_command():
+    global fade_out_active, fade_out_timer
+    fade_out_active = True
+    fade_out_timer = time.time() + FADE_OUT_DURATION
+    return "Shutting down...", "vertical"
+
+def notepad_command(args):
+    global fade_out_active, fade_out_timer, NOTEPAD_FILENAME_TO_OPEN
+    fade_out_active = True
+    fade_out_timer = time.time() + FADE_OUT_DURATION
+    if args:
+        NOTEPAD_FILENAME_TO_OPEN = args.strip()
+        return f"Launching Notepad: {args}", "vertical"
+    else:
+        current_time = datetime.datetime.now()
+        filename = current_time.strftime("%d%m%y%H%M")
+        NOTEPAD_FILENAME_TO_OPEN = filename
+        return f"Launching New Notepad: {filename}", "vertical"
+
+# A dictionary to route commands to their functions
+COMMANDS = {
+    "calc": calculate,
+    "stats": lambda args: (None, None), # Handled in main loop for timer
+    "notepad": notepad_command,
+    "notes": lambda args: list_notes(),
+    "shutdown": lambda args: shutdown_command()
+}
 
 def command_processor(command_string):
-    global fade_out_active, fade_out_timer, stats_display_timer, OUTPUT_MESSAGE, NOTEPAD_FILENAME_TO_OPEN
-
+    global stats_display_timer
     parts = command_string.split(" ", 1)
     command = parts[0]
     args = parts[1] if len(parts) > 1 else ""
-
-    if command == "calc":
-        return calculate(args)
-    elif command == "stats":
+    
+    # Handle stats command separately to manage the timer
+    if command == "stats":
         stats_display_timer = time.time() + STATS_DISPLAY_DURATION
-        return "Displaying system stats..."
-    elif command == "notepad":
-        fade_out_active = True
-        fade_out_timer = time.time() + FADE_OUT_DURATION
-        NOTEPAD_FILENAME_TO_OPEN = args.strip() if args else None
-        return f"Launching Notepad: {args}" if args else "Launching Notepad"
-    elif command == "notes":
-        notes_files = [f for f in os.listdir('.') if f.endswith('.json')]
-        if notes_files:
-            return "Saved Notes:\n" + "\n".join(notes_files)
-        else:
-            return "No saved notes found."
-    return f"Error: '{command}' is not a valid command"
+        return "Displaying system stats...", "vertical"
+
+    if command in COMMANDS:
+        return COMMANDS[command](args)
+    else:
+        return f"Error: '{command}' is not a valid command", "vertical"
 
 def create_streaks(width, height):
     streaks = []
@@ -147,7 +174,7 @@ def draw_seamless_rain_to_buffer(messages_data, color_pair):
             pane_height = half_height if y_quad == 0 else height - half_height
             pane_width = half_width if x_quad == 0 else width - half_width
 
-            if key == (1, 0):
+            if key == (1, 0) and OUTPUT_FORMAT == "vertical":
                 if isinstance(messages[0], str) and '\n' in messages[0]:
                     message_lines = messages[0].split('\n')
                 else:
@@ -164,6 +191,7 @@ def draw_seamless_rain_to_buffer(messages_data, color_pair):
                     if 0 <= msg_y < height and 0 <= msg_x < width:
                         for j, char in enumerate(msg):
                             current_buffer[msg_y][msg_x + j] = (char, color_pair)
+            
             else:
                 msg_len = len(messages)
                 start_y_pane = (pane_height - msg_len) // 2
@@ -178,9 +206,8 @@ def draw_seamless_rain_to_buffer(messages_data, color_pair):
                             current_buffer[msg_y][msg_x] = (char, color_pair)
 
 def refresh_dirty_pixels(stdscr):
-    height, width = screen_height, screen_width
-    for y in range(height):
-        for x in range(width):
+    for y in range(screen_height):
+        for x in range(screen_width):
             if current_buffer[y][x] != last_buffer[y][x]:
                 char, color = current_buffer[y][x]
                 try:
@@ -189,7 +216,7 @@ def refresh_dirty_pixels(stdscr):
                     pass
 
 def main(stdscr):
-    global streaks, screen_height, screen_width, current_buffer, last_buffer, input_buffer, OUTPUT_MESSAGE, stats_display_timer, fade_out_active, fade_out_timer, NOTEPAD_FILENAME_TO_OPEN
+    global streaks, screen_height, screen_width, current_buffer, last_buffer, input_buffer, OUTPUT_MESSAGE, OUTPUT_FORMAT, stats_display_timer, fade_out_active, fade_out_timer, NOTEPAD_FILENAME_TO_OPEN
     
     stdscr.clear()
     curses.curs_set(1)
@@ -223,10 +250,10 @@ def main(stdscr):
             if key in [ord('q'), ord('Q')]:
                 break
             elif key == curses.KEY_ENTER or key == ord('\n'):
-                result = command_processor(input_buffer.strip())
-                OUTPUT_MESSAGE = result
+                # Process the input on Enter key press
+                OUTPUT_MESSAGE, OUTPUT_FORMAT = command_processor(input_buffer.strip())
                 output_message_timer = time.time() + OUTPUT_EFFECT_DURATION
-                input_buffer = ""
+                input_buffer = "" # Clear the buffer
             elif key == curses.KEY_BACKSPACE or key == ord('\b'):
                 input_buffer = input_buffer[:-1]
             elif 32 <= key < 127:
@@ -234,6 +261,7 @@ def main(stdscr):
         
         if time.time() > output_message_timer:
             OUTPUT_MESSAGE = None
+            OUTPUT_FORMAT = "vertical" # Reset to default
 
         cpu_usage = psutil.cpu_percent(interval=None)
         mem_usage = psutil.virtual_memory().percent
@@ -247,10 +275,10 @@ def main(stdscr):
         if time.time() < stats_display_timer:
             messages_data[(0, 1)] = [
                 f"CPU: {cpu_usage:0>2.0f}%",
-                f"MEM: {mem_usage:0>2.0f}%"
+                f"MEM: {mem_usage:0>2.0f}%",
+                f"DAY: {current_time.strftime('%A')}"
             ]
             messages_data[(1, 1)] = [
-                f"DAY: {current_time.strftime('%A')}",
                 f"DATE: {current_time.strftime('%d/%m/%Y')}",
                 f"TIME: {current_time.strftime('%H:%M:%S')}"
             ]
@@ -264,10 +292,12 @@ def main(stdscr):
         stdscr.refresh()
         
         if fade_out_active and time.time() > fade_out_timer:
+            # We use a simple subprocess call to launch the notepad app
             command_to_run = ["python", "notepad.py"]
             if NOTEPAD_FILENAME_TO_OPEN:
                 command_to_run.append(NOTEPAD_FILENAME_TO_OPEN)
             
+            # The subprocess will take over the terminal
             subprocess.run(command_to_run)
                 
             fade_out_active = False
