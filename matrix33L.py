@@ -37,6 +37,10 @@ APP_TO_LAUNCH = None
 NOTEPAD_FILENAME_TO_OPEN = None
 SHOULD_EXIT = False
 
+# Typing Test
+TYPING_QUOTE = "The Matrix is a system, Neo. That system is our enemy."
+typing_test_active = False
+
 # A single set of streaks for the whole screen to create a seamless effect
 streaks = []
 screen_height, screen_width = 0, 0
@@ -151,7 +155,6 @@ COMMANDS = {
     "notepad": lambda args: notepad_command(args),
     "notes": lambda args: list_notes(),
     "shutdown": lambda args: shutdown_command(args),
-    "type": lambda args: (None, None),
     "tetris": lambda args: tetris_command(args)
 }
 
@@ -164,11 +167,6 @@ def command_processor(command_string):
     if command == "stats":
         stats_display_timer = time.time() + STATS_DISPLAY_DURATION
         return "Displaying system stats...", "vertical"
-    elif command == "type":
-        fade_out_active = True
-        fade_out_timer = time.time() + FADE_OUT_DURATION
-        APP_TO_LAUNCH = "type"
-        return "Starting typing test...", "vertical"
     elif command == "tetris":
         fade_out_active = True
         fade_out_timer = time.time() + FADE_OUT_DURATION
@@ -273,6 +271,7 @@ def draw_seamless_rain_to_buffer(messages_data, color_pair):
                         if 0 <= msg_y < height and 0 <= msg_x < width:
                             current_buffer[msg_y][msg_x] = (char, color_pair)
 
+
 def refresh_dirty_pixels(stdscr):
     for y in range(screen_height):
         for x in range(screen_width):
@@ -310,18 +309,7 @@ def main(stdscr):
         if fade_out_active and time.time() >= fade_out_timer:
             if SHOULD_EXIT:
                 break
-            
-            if APP_TO_LAUNCH == "type":
-                command_to_run = ["python", "type.py"]
-                result = subprocess.run(command_to_run, capture_output=True, text=True)
-                OUTPUT_MESSAGE = result.stdout
-                OUTPUT_FORMAT = "paragraph"
-                output_message_timer = time.time() + OUTPUT_EFFECT_DURATION
-                APP_TO_LAUNCH = None
-                fade_out_active = False
-                stdscr.clear()
-                continue
-            
+
             if APP_TO_LAUNCH == "tetris":
                 command_to_run = ["python", "tetris.py"]
                 subprocess.run(command_to_run)
@@ -401,3 +389,4 @@ def main(stdscr):
 
 if __name__ == '__main__':
     curses.wrapper(main)
+
