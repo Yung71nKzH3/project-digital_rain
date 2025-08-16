@@ -32,6 +32,9 @@ TETROMINOES = [
     [[0, 0, 1], [1, 1, 1]],
 ]
 
+# Adjust this value to change the game speed
+FALL_SPEED = 0.8
+
 # --- Global Variables ---
 streaks = []
 screen_height, screen_width = 0, 0
@@ -50,7 +53,6 @@ def create_streaks(width, height):
     return streaks
 
 def draw_seamless_rain_background(stdscr, color_pair):
-    """Draws the falling rain to fill the background."""
     stdscr.clear()
     height, width = stdscr.getmaxyx()
 
@@ -71,12 +73,10 @@ def draw_seamless_rain_background(stdscr, color_pair):
             streak['char_set'] = [random.choice(MATRIX_CHARS) for _ in range(streak['length'])]
 
 def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
-    """Draws the Tetris game board and pieces on top of the rain."""
     height, width = stdscr.getmaxyx()
     board_start_y = (height - TETRIS_BOARD_HEIGHT) // 2
     board_start_x = (width - TETRIS_BOARD_WIDTH * 2) // 2
     
-    # Draw the border and background of the board
     for y in range(TETRIS_BOARD_HEIGHT + 2):
         if 0 <= board_start_y + y - 1 < height:
             stdscr.addstr(board_start_y + y - 1, board_start_x - 1, "+" + "-" * (TETRIS_BOARD_WIDTH * 2) + "+", color_pair)
@@ -87,13 +87,11 @@ def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
     if 0 <= board_start_y + TETRIS_BOARD_HEIGHT < height:
         stdscr.addstr(board_start_y + TETRIS_BOARD_HEIGHT, board_start_x - 1, "+" + "-" * (TETRIS_BOARD_WIDTH * 2) + "+", color_pair)
 
-    # Draw the fixed pieces with Matrix characters
     for y in range(TETRIS_BOARD_HEIGHT):
         for x in range(TETRIS_BOARD_WIDTH):
             if board[y][x] == 1:
                 stdscr.addstr(board_start_y + y, board_start_x + x * 2, "[]", color_pair)
 
-    # Draw the current piece with Matrix characters
     for y_piece, row in enumerate(current_piece['shape']):
         for x_piece, cell in enumerate(row):
             if cell == 1:
@@ -101,7 +99,6 @@ def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
                     char = random.choice(MATRIX_CHARS)
                     stdscr.addstr(board_start_y + current_piece['y'] + y_piece, board_start_x + (current_piece['x'] + x_piece) * 2, char + " ", color_pair)
     
-    # Draw the score
     score_y = board_start_y + TETRIS_BOARD_HEIGHT + 2
     score_x = board_start_x
     if 0 <= score_y < height:
@@ -175,7 +172,7 @@ def main(stdscr):
                 while not check_collision(board, current_piece['shape'], current_piece['y'] + 1, current_piece['x']):
                     current_piece['y'] += 1
         
-        if time.time() - last_fall_time > 0.5:
+        if time.time() - last_fall_time > FALL_SPEED:
             if check_collision(board, current_piece['shape'], current_piece['y'] + 1, current_piece['x']):
                 for y_piece, row in enumerate(current_piece['shape']):
                     for x_piece, cell in enumerate(row):
