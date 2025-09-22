@@ -27,7 +27,7 @@ OUTPUT_MESSAGE = None
 OUTPUT_FORMAT = "vertical" # Default output format
 
 # New variables for on-demand stats and fade-out
-STATS_DISPLAY_DURATION = 5.0
+STATS_DISPLAY_DURATION = 2.3 #default: 5.0
 stats_display_timer = 0
 
 FADE_OUT_DURATION = 2.0
@@ -38,7 +38,7 @@ NOTEPAD_FILENAME_TO_OPEN = None
 SHOULD_EXIT = False
 
 # Typing Test
-TYPING_QUOTE = "The Matrix is a system, Neo. That system is our enemy."
+TYPING_QUOTE = "the quick brown fox jumps over the lazy dog"
 typing_test_active = False
 
 # A single set of streaks for the whole screen to create a seamless effect
@@ -52,14 +52,26 @@ input_buffer = ""
 
 # --- Utility Functions ---
 CONVERSION_FACTORS = {
+    # Length & Weight
     'm': {'ft': 3.28084},
     'ft': {'m': 0.3048},
     'kg': {'lbs': 2.20462},
     'lbs': {'kg': 0.453592},
+    'km': {'mi': 0.621371},
+    'mi': {'km': 1.60934},
+    # Temperature
     'c': {'f': lambda c: (c * 9/5) + 32},
     'f': {'c': lambda f: (f - 32) * 5/9},
-    'km': {'mi': 0.621371},
-    'mi': {'km': 1.60934}
+    # Time
+    'sec': {'min': 1/60, 'hr': 1/3600, 'd': 1/86400},
+    'min': {'sec': 60, 'hr': 1/60, 'd': 1/1440},
+    'hr': {'sec': 3600, 'min': 60, 'd': 1/24},
+    'd': {'sec': 86400, 'min': 1440, 'hr': 24},
+    # Data
+    'B': {'kB': 1/1024, 'MB': 1/1048576, 'GB': 1/1073741824},
+    'kB': {'B': 1024, 'MB': 1/1024, 'GB': 1/1048576},
+    'MB': {'B': 1048576, 'kB': 1024, 'GB': 1/1024},
+    'GB': {'B': 1073741824, 'kB': 1048576, 'MB': 1024}
 }
 
 def convert_units(expression):
@@ -369,10 +381,10 @@ def main(stdscr):
         if time.time() < stats_display_timer:
             messages_data[(0, 1)] = [
                 f"CPU: {cpu_usage:0>2.0f}%",
-                f"MEM: {mem_usage:0>2.0f}%",
-                f"DAY: {current_time.strftime('%A')}"
+                f"MEM: {mem_usage:0>2.0f}%"
             ]
             messages_data[(1, 1)] = [
+                f"DAY: {current_time.strftime('%A')}",
                 f"DATE: {current_time.strftime('%d/%m/%Y')}",
                 f"TIME: {current_time.strftime('%H:%M:%S')}"
             ]

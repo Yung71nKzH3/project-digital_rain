@@ -24,9 +24,11 @@ TETROMINOES = [
     [[0, 0, 1], [1, 1, 1]],
 ]
 
-# Adjust this value to change the game speed
+# Adjust this value to change the Tetris piece fall speed
 FALL_SPEED = 0.8
-RAIN_SPEED = 0.05
+# Adjust this value to change how often the rain updates
+# A higher value will make the rain move slower
+RAIN_UPDATE_SPEED = 0.1
 
 # --- Global Variables ---
 MATRIX_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:'\"\\|,./<>?`~"
@@ -40,12 +42,13 @@ def create_streaks(width, height):
         x = random.randint(0, width - 1)
         y = random.randint(-height, 0)
         length = random.randint(10, 30)
-        speed = random.randint(1, 3)
+        # We can now set a fixed speed of 1 since RAIN_UPDATE_SPEED controls the overall pace
+        speed = 1
         char_set = [random.choice(MATRIX_CHARS) for _ in range(length)]
         streaks.append({'x': x, 'y': y, 'length': length, 'speed': speed, 'char_set': char_set})
     return streaks
 
-def draw_seamless_rain_background(stdscr, color_pair):
+def draw_seamless_rain_background(stdscr, color_pair, update_rain=False):
     """Draws the falling rain to fill the background."""
     stdscr.erase()
     height, width = stdscr.getmaxyx()
@@ -58,7 +61,8 @@ def draw_seamless_rain_background(stdscr, color_pair):
                 char_to_draw = streak['char_set'][i]
                 stdscr.addstr(y_pos, x_pos, char_to_draw, color_pair)
 
-        streak['y'] += streak['speed']
+        if update_rain:
+            streak['y'] += streak['speed']
         
         if streak['y'] > height:
             streak['y'] = random.randint(-height, 0)
@@ -76,6 +80,7 @@ def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
     for y in range(TETRIS_BOARD_HEIGHT + 2):
         for x in range(TETRIS_BOARD_WIDTH * 2 + 2):
             if 0 <= board_start_y + y - 1 < height and 0 <= board_start_x + x - 1 < width:
+                # Use color_pair(2) with a space " " to draw the black rectangle
                 stdscr.addstr(board_start_y + y - 1, board_start_x + x - 1, " ", curses.color_pair(2))
 
     # Draw the border and pieces
@@ -119,8 +124,10 @@ def main(stdscr):
 
     if curses.has_colors():
         curses.start_color()
+        # Pair 1: Green foreground on a black background for the rain
         curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_GREEN)
+        # Pair 2: Black foreground on a black background for the void board
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLACK)
         color_pair = curses.color_pair(1)
     else:
         color_pair = 0
@@ -139,9 +146,15 @@ def main(stdscr):
     }
     
     last_fall_time = time.time()
+    last_rain_time = time.time()
     
     while not game_over:
-        draw_seamless_rain_background(stdscr, color_pair)
+        update_rain = False
+        if time.time() - last_rain_time > RAIN_UPDATE_SPEED:
+            update_rain = True
+            last_rain_time = time.time()
+        
+        draw_seamless_rain_background(stdscr, color_pair, update_rain)
         draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair)
         stdscr.refresh()
         
