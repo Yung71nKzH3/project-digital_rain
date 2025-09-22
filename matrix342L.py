@@ -68,10 +68,10 @@ CONVERSION_FACTORS = {
     'hr': {'sec': 3600, 'min': 60, 'd': 1/24},
     'd': {'sec': 86400, 'min': 1440, 'hr': 24},
     # Data
-    'B': {'kB': 1/1024, 'MB': 1/1048576, 'GB': 1/1073741824},
-    'kB': {'B': 1024, 'MB': 1/1024, 'GB': 1/1048576},
-    'MB': {'B': 1048576, 'kB': 1024, 'GB': 1/1024},
-    'GB': {'B': 1073741824, 'kB': 1048576, 'MB': 1024}
+    'b': {'kb': 1/1024, 'mb': 1/1048576, 'gb': 1/1073741824},
+    'kb': {'b': 1024, 'mb': 1/1024, 'gb': 1/1048576},
+    'mb': {'b': 1048576, 'kb': 1024, 'gb': 1/1024},
+    'gb': {'b': 1073741824, 'kb': 1048576, 'mb': 1024}
 }
 
 LAUNCH_COMMANDS = {
@@ -341,17 +341,28 @@ def main(stdscr):
             curses.endwin()
 
             try:
-                # Prepare the command and redirect stdout and stderr
+                # Prepare the command to run the script
                 command_list = []
+                
+                # Check for the desktop environment to set the correct flags
+                is_i3 = os.environ.get('DESKTOP_SESSION') == 'i3'
+                
+                # The fullscreen flag is only added for GNOME (not i3)
+                fullscreen_flag = "--full-screen" if not is_i3 else ""
+                
                 if APP_TO_LAUNCH == "notepad.py":
-                    command_list = ["python3", APP_TO_LAUNCH]
+                    # Launch notepad.py in a NEW terminal
+                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", "/home/w1ll0w/Documents/project-digital_rain/notepad.py"]
+                    command_list = [c for c in command if c] # This removes any empty strings from the list
                     if NOTEPAD_FILENAME_TO_OPEN:
                         command_list.append(NOTEPAD_FILENAME_TO_OPEN)
                 elif APP_TO_LAUNCH == "tetris.py":
-                    command_list = ["python3", APP_TO_LAUNCH]
+                    # Launch tetris.py in a NEW terminal
+                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", "/home/w1ll0w/Documents/project-digital_rain/tetris.py"]
+                    command_list = [c for c in command if c]
                 elif APP_TO_LAUNCH in LAUNCH_COMMANDS:
                     command = LAUNCH_COMMANDS.get(APP_TO_LAUNCH)
-                    command_list = command.split() # Splits the string into a list of arguments
+                    command_list = command.split()
 
                 if command_list:
                     subprocess.run(command_list, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -50,20 +50,25 @@ def create_streaks(width, height):
 
 def draw_seamless_rain_background(stdscr, color_pair, update_rain=False):
     """Draws the falling rain to fill the background."""
-    stdscr.erase()
     height, width = stdscr.getmaxyx()
-
+    stdscr.erase()
+    
     for streak in streaks:
         for i in range(streak['length']):
             y_pos = streak['y'] + i
             x_pos = streak['x']
+            
+            # Check if the coordinates are within the screen bounds
             if 0 <= y_pos < height and 0 <= x_pos < width:
                 char_to_draw = streak['char_set'][i]
-                stdscr.addstr(y_pos, x_pos, char_to_draw, color_pair)
-
+                try:
+                    stdscr.addstr(y_pos, x_pos, char_to_draw, color_pair)
+                except curses.error:
+                    pass # Silently ignore the error if it still occurs
+    
         if update_rain:
             streak['y'] += streak['speed']
-        
+            
         if streak['y'] > height:
             streak['y'] = random.randint(-height, 0)
             streak['length'] = random.randint(10, 30)
