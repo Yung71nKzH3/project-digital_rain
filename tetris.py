@@ -121,6 +121,13 @@ def main(stdscr):
     curses.curs_set(1)
     stdscr.nodelay(True)
     stdscr.timeout(0)
+    new_height, new_width = stdscr.getmaxyx()
+    
+    if (new_height, new_width) != (screen_height, new_width):
+        screen_height, screen_width = new_height, new_width
+        stdscr.clear()
+        streaks = create_streaks(screen_width, screen_height)
+        stdscr.refresh()
 
     if curses.has_colors():
         curses.start_color()
@@ -149,11 +156,19 @@ def main(stdscr):
     last_rain_time = time.time()
     
     while not game_over:
+        # Handle terminal resizing
+        new_height, new_width = stdscr.getmaxyx()
+        if (new_height, new_width) != (screen_height, new_width):
+            screen_height, screen_width = new_height, new_width
+            stdscr.clear()
+            streaks = create_streaks(screen_width, screen_height)
+            stdscr.refresh()
+        
         update_rain = False
         if time.time() - last_rain_time > RAIN_UPDATE_SPEED:
             update_rain = True
             last_rain_time = time.time()
-        
+            
         draw_seamless_rain_background(stdscr, color_pair, update_rain)
         draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair)
         stdscr.refresh()

@@ -337,37 +337,39 @@ def main(stdscr):
         if fade_out_active and time.time() >= fade_out_timer:
             if SHOULD_EXIT:
                 break
-            
+
             curses.endwin()
-            
+
             try:
-                # Handle dedicated commands first
+                # Prepare the command and redirect stdout and stderr
+                command_list = []
                 if APP_TO_LAUNCH == "notepad.py":
+                    command_list = ["python3", APP_TO_LAUNCH]
                     if NOTEPAD_FILENAME_TO_OPEN:
-                        subprocess.run(["python3", APP_TO_LAUNCH, NOTEPAD_FILENAME_TO_OPEN])
-                    else:
-                        subprocess.run(["python3", APP_TO_LAUNCH])
+                        command_list.append(NOTEPAD_FILENAME_TO_OPEN)
                 elif APP_TO_LAUNCH == "tetris.py":
-                    subprocess.run(["python3", APP_TO_LAUNCH])
-                
-                # Handle dynamic 'open' commands from the LAUNCH_COMMANDS dictionary
+                    command_list = ["python3", APP_TO_LAUNCH]
                 elif APP_TO_LAUNCH in LAUNCH_COMMANDS:
                     command = LAUNCH_COMMANDS.get(APP_TO_LAUNCH)
-                    subprocess.run(command, shell=True)
+                    command_list = command.split() # Splits the string into a list of arguments
 
-                OUTPUT_MESSAGE = f"{APP_TO_LAUNCH} has ended."
-
+                if command_list:
+                    subprocess.run(command_list, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                OUTPUT_MESSAGE = None
             except Exception as e:
                 OUTPUT_MESSAGE = f"Error launching {APP_TO_LAUNCH}: {e}"
+                OUTPUT_FORMAT = "vertical"
+                output_message_timer = time.time() + OUTPUT_EFFECT_DURATION
 
-            OUTPUT_FORMAT = "vertical"
-            output_message_timer = time.time() + OUTPUT_EFFECT_DURATION
+            # Re-initialize the curses screen state
+            stdscr.clear()
+            stdscr.refresh()
+
             fade_out_active = False
             APP_TO_LAUNCH = None
             NOTEPAD_FILENAME_TO_OPEN = None
             
-            stdscr.clear()
-            stdscr.refresh()
             continue
 
         new_height, new_width = stdscr.getmaxyx()
