@@ -151,9 +151,10 @@ def main(stdscr):
     score = 0
     game_over = False
     
+    shape = random.choice(TETROMINOES)
     current_piece = {
-        'shape': random.choice(TETROMINOES),
-        'x': TETRIS_BOARD_WIDTH // 2 - len(random.choice(TETROMINOES)[0]) // 2,
+        'shape': shape,
+        'x': TETRIS_BOARD_WIDTH // 2 - len(shape[0]) // 2,
         'y': 0
     }
     

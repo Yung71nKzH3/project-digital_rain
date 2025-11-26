@@ -341,25 +341,28 @@ def main(stdscr):
             curses.endwin()
 
             try:
-                # Prepare the command to run the script
                 command_list = []
                 
-                # Check for the desktop environment to set the correct flags
                 is_i3 = os.environ.get('DESKTOP_SESSION') == 'i3'
                 
-                # The fullscreen flag is only added for GNOME (not i3)
                 fullscreen_flag = "--full-screen" if not is_i3 else ""
+
+                base_dir = os.path.dirname(os.path.abspath(__file__))
                 
                 if APP_TO_LAUNCH == "notepad.py":
+                    script_path = os.path.join(base_dir, "notepad.py")
                     # Launch notepad.py in a NEW terminal
-                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", "/home/w1ll0w/Documents/project-digital_rain/notepad.py"]
-                    command_list = [c for c in command if c] # This removes any empty strings from the list
+                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", script_path]
+                    command_list = [c for c in command if c] 
                     if NOTEPAD_FILENAME_TO_OPEN:
                         command_list.append(NOTEPAD_FILENAME_TO_OPEN)
+                        
                 elif APP_TO_LAUNCH == "tetris.py":
+                    script_path = os.path.join(base_dir, "tetris.py")
                     # Launch tetris.py in a NEW terminal
-                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", "/home/w1ll0w/Documents/project-digital_rain/tetris.py"]
+                    command = ["gnome-terminal", fullscreen_flag, "--", "python3", script_path]
                     command_list = [c for c in command if c]
+                    
                 elif APP_TO_LAUNCH in LAUNCH_COMMANDS:
                     command = LAUNCH_COMMANDS.get(APP_TO_LAUNCH)
                     command_list = command.split()
