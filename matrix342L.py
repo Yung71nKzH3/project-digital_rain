@@ -27,7 +27,7 @@ OUTPUT_MESSAGE = None
 OUTPUT_FORMAT = "vertical" # Default output format
 
 # New variables for on-demand stats and fade-out
-STATS_DISPLAY_DURATION = 2.3 #default: 5.0
+STATS_DISPLAY_DURATION = 2.3 
 stats_display_timer = 0
 
 FADE_OUT_DURATION = 2.0
@@ -153,12 +153,30 @@ def notepad_command(args):
     fade_out_active = True
     fade_out_timer = time.time() + FADE_OUT_DURATION
     APP_TO_LAUNCH = "notepad.py"
+    
     if args:
+        # User provided a filename
         NOTEPAD_FILENAME_TO_OPEN = args.strip()
     else:
-        current_time = datetime.datetime.now()
-        filename = current_time.strftime("%d%m%y%H%M")
-        NOTEPAD_FILENAME_TO_OPEN = filename
+        # Auto-increment logic
+        existing_numbers = []
+        # Scan current directory for files like note_1.json, note_25.json
+        for f in os.listdir('.'):
+            if f.startswith("note_") and f.endswith(".json"):
+                try:
+                    # Extract the number between "note_" and ".json"
+                    number_part = f[5:-5] 
+                    existing_numbers.append(int(number_part))
+                except ValueError:
+                    continue
+        
+        if existing_numbers:
+            next_num = max(existing_numbers) + 1
+        else:
+            next_num = 1
+            
+        NOTEPAD_FILENAME_TO_OPEN = f"note_{next_num}"
+
     return f"Launching Notepad...", "vertical"
 
 def tetris_command(args):
@@ -341,28 +359,32 @@ def main(stdscr):
             curses.endwin()
 
             try:
+                # Prepare the command to run the script
                 command_list = []
                 
+                # Check for the desktop environment to set the correct flags
                 is_i3 = os.environ.get('DESKTOP_SESSION') == 'i3'
                 
+                # The fullscreen flag is only added for GNOME (not i3)
                 fullscreen_flag = "--full-screen" if not is_i3 else ""
-
-                base_dir = os.path.dirname(os.path.abspath(__file__))
                 
+                # Get directory of current script to find notepad/tetris relative to it
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+
                 if APP_TO_LAUNCH == "notepad.py":
                     script_path = os.path.join(base_dir, "notepad.py")
                     # Launch notepad.py in a NEW terminal
                     command = ["gnome-terminal", fullscreen_flag, "--", "python3", script_path]
-                    command_list = [c for c in command if c] 
+                    command_list = [c for c in command if c] # This removes any empty strings
                     if NOTEPAD_FILENAME_TO_OPEN:
                         command_list.append(NOTEPAD_FILENAME_TO_OPEN)
-                        
+
                 elif APP_TO_LAUNCH == "tetris.py":
                     script_path = os.path.join(base_dir, "tetris.py")
                     # Launch tetris.py in a NEW terminal
                     command = ["gnome-terminal", fullscreen_flag, "--", "python3", script_path]
                     command_list = [c for c in command if c]
-                    
+
                 elif APP_TO_LAUNCH in LAUNCH_COMMANDS:
                     command = LAUNCH_COMMANDS.get(APP_TO_LAUNCH)
                     command_list = command.split()

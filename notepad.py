@@ -6,7 +6,7 @@ import sys
 
 # --- Configuration ---
 NOTE_INDENT_WIDTH = 4
-SAVE_FILENAME = "notes.json" # Default filename
+SAVE_FILENAME = "notes.json" # Default, usually overwritten by arguments
 
 # --- Data Structures ---
 class Note:
@@ -22,7 +22,7 @@ class Note:
     @staticmethod
     def from_dict(data):
         """Creates a Note object from a dictionary."""
-        return Note(data["content"], data["indent"])
+        return Note(data.get("content", ""), data.get("indent", 0))
 
 def get_flat_list(notes_tree):
     """
@@ -30,31 +30,41 @@ def get_flat_list(notes_tree):
     """
     return notes_tree
 
-def get_note_at_y(notes_tree, y_pos):
-    """Finds the note object at the given y-coordinate in the flat list."""
-    if 0 <= y_pos < len(notes_tree):
-        return notes_tree[y_pos]
-    return None
-
-def draw_notes(stdscr, notes_tree, cursor_y, color_pair):
-    """Draws all the notes with the specified formatting."""
+def draw_notes(stdscr, flat_notes, selected_index, scroll_offset, color_pair):
+    """Draws notes within the visible viewport based on scroll_offset."""
     stdscr.erase()
-    y_pos = 0
-    flat_list = get_flat_list(notes_tree)
+    height, width = stdscr.getmaxyx()
     
-    for i, note in enumerate(flat_list):
-        y_pos += 1
+    # Reserve 1 line at the bottom for safety
+    max_draw_lines = height - 1 
+    
+    # Slice the list to get only the notes that should be visible
+    visible_notes = flat_notes[scroll_offset : scroll_offset + max_draw_lines]
+    
+    for i, note in enumerate(visible_notes):
+        # The Y position on screen (0 to max_draw_lines)
+        screen_y = i
+        
+        # The actual index in the main list
+        real_index = scroll_offset + i
         
         prefix = ""
         if note.indent > 0:
             prefix = " " * (note.indent * NOTE_INDENT_WIDTH) + "|_"
 
-        # Draw the cursor indicator
-        if y_pos == cursor_y:
-            stdscr.addstr(y_pos, 0, "> ", curses.A_REVERSE)
-            stdscr.addstr(y_pos, 2, prefix + note.content, color_pair)
+        # Draw the note
+        if real_index == selected_index:
+            # Highlight current selection
+            try:
+                stdscr.addstr(screen_y, 0, "> ", curses.A_REVERSE)
+                stdscr.addstr(screen_y, 2, prefix + note.content, color_pair)
+            except curses.error:
+                pass 
         else:
-            stdscr.addstr(y_pos, 0, "  " + prefix + note.content, color_pair)
+            try:
+                stdscr.addstr(screen_y, 0, "  " + prefix + note.content, color_pair)
+            except curses.error:
+                pass
 
 def save_notes(notes_tree):
     """Saves notes to a JSON file."""
@@ -73,12 +83,13 @@ def load_notes():
                 return [Note.from_dict(item) for item in data]
         except (IOError, json.JSONDecodeError):
             pass
-    return [Note("", 0)] # Start with a blank note
+    return [Note("", 0)] # Start with a blank note if file missing or corrupt
 
 
 def main(stdscr):
     global SAVE_FILENAME
 
+    # Check for filename argument
     if len(sys.argv) > 1:
         filename = sys.argv[1]
         if not filename.endswith(".json"):
@@ -98,26 +109,62 @@ def main(stdscr):
             color_pair = 0
 
         notes = load_notes()
-        cursor_y = 1
+        
+        # State variables
+        selected_index = 0
+        scroll_offset = 0
         
         while True:
             flat_notes = get_flat_list(notes)
+            
+            # Ensure there's always at least one note
             if not flat_notes:
                 notes = [Note("", 0)]
                 flat_notes = notes
-                cursor_y = 1
+                selected_index = 0
             
-            draw_notes(stdscr, notes, cursor_y, color_pair)
-            
-            current_note = get_note_at_y(notes, cursor_y-1)
-            if not current_note:
-                cursor_y = max(1, cursor_y - 1)
-                current_note = get_note_at_y(notes, cursor_y-1)
+            # Bounds check selection
+            if selected_index >= len(flat_notes):
+                selected_index = len(flat_notes) - 1
+            if selected_index < 0:
+                selected_index = 0
 
-            cursor_x = 2 + (current_note.indent * NOTE_INDENT_WIDTH) + len(current_note.content) + len(str(current_note.indent))
+            # --- Scroll Logic ---
+            height, width = stdscr.getmaxyx()
+            max_displayable = height - 1
+            
+            # 1. If selection is above the view, scroll up
+            if selected_index < scroll_offset:
+                scroll_offset = selected_index
+            
+            # 2. If selection is below the view, scroll down
+            elif selected_index >= scroll_offset + max_displayable:
+                scroll_offset = selected_index - max_displayable + 1
+            # --------------------
+            
+            draw_notes(stdscr, flat_notes, selected_index, scroll_offset, color_pair)
+            
+            current_note = flat_notes[selected_index]
+
+            # Calculate where to put the blinking terminal cursor
+            cursor_y_on_screen = selected_index - scroll_offset
+            
+            # Calculate X position based on indentation
+            # Base offset is 2 (for the "> " or "  ")
+            cursor_x = 2 
             if current_note.indent > 0:
-                cursor_x += NOTE_INDENT_WIDTH - 2
-            stdscr.move(cursor_y, cursor_x)
+                # Add indentation spaces + the "|_" marker
+                cursor_x += (current_note.indent * NOTE_INDENT_WIDTH) + 2
+            
+            # Add length of content
+            cursor_x += len(current_note.content)
+
+            # Safety check before moving cursor
+            if 0 <= cursor_y_on_screen < height and 0 <= cursor_x < width:
+                try:
+                    stdscr.move(cursor_y_on_screen, cursor_x)
+                except curses.error:
+                    pass
             
             key = stdscr.getch()
 
@@ -125,24 +172,25 @@ def main(stdscr):
                 break
             elif key == curses.KEY_ENTER or key == ord('\n'):
                 new_note = Note("", current_note.indent)
-                notes.insert(notes.index(current_note) + 1, new_note)
-                cursor_y += 1
+                notes.insert(selected_index + 1, new_note)
+                selected_index += 1
             elif key == curses.KEY_BACKSPACE or key == ord('\b') or key == curses.KEY_DC:
                 if len(current_note.content) > 0:
                     current_note.content = current_note.content[:-1]
                 elif len(notes) > 1:
                     notes.remove(current_note)
-                    cursor_y = max(1, cursor_y - 1)
+                    # Move selection up if we delete a note
+                    selected_index = max(0, selected_index - 1)
             elif key == curses.KEY_RIGHT:
-                if current_note.indent < 5: # Limit indentation to avoid out of bounds errors
+                if current_note.indent < 5: # Limit indentation
                     current_note.indent += 1
             elif key == curses.KEY_LEFT:
                 if current_note.indent > 0:
                     current_note.indent -= 1
             elif key == curses.KEY_UP:
-                cursor_y = max(1, cursor_y - 1)
+                selected_index = max(0, selected_index - 1)
             elif key == curses.KEY_DOWN:
-                cursor_y = min(len(notes), cursor_y + 1)
+                selected_index = min(len(notes) - 1, selected_index + 1)
             elif 32 <= key < 127:
                 current_note.content += chr(key)
 
