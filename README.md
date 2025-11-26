@@ -1,0 +1,8 @@
+Digital Rain Desktop Environment (Matrix TUI)A terminal-based "desktop environment" inspired by The Matrix. It features a falling digital rain background and integrated apps like a hierarchical Notepad, a Tetris clone, and a Typing Speed Test.FeaturesSeamless Digital Rain: Background animation runs continuously.Integrated Apps: - Notepad: Infinite scrolling, hierarchical notes (use Arrow Keys to indent/dedent).Tetris: A classic block-stacking game.Typing Test: Test your WPM with Matrix-themed quotes.Commands: Calculate (calc), Unit Convert (convert), System Stats (stats).RequirementsPython 3.6 or higherA terminal emulator (GNOME Terminal, iTerm2, etc.)InstallationLinux (Fedora/Ubuntu/Debian)Install Python 3 if not already installed.Install the required psutil library (used for system stats):# Fedora
+sudo dnf install python3-psutil
+
+# Ubuntu/Debian
+sudo apt install python3-psutil
+Download the files (matrix342L.py, tetris.py, notepad.py) into a single folder.WindowsInstall Python from python.org.Open Command Prompt and install the required libraries:pip install psutil windows-curses
+(Note: windows-curses is required because Windows doesn't have native curses support).How to RunOpen your terminal, navigate to the folder, and run:python3 matrix342L.py
+Commands ListType these commands directly into the Matrix interface:tetris: Launch the Tetris game.notepad: Launch the Notepad (auto-saves to note_X.json).notepad mynote: Open a specific note file named mynote.json.type: Start the Typing Test construct.stats: Show CPU and Memory usage.calc 5 + 5: Perform basic calculations.convert 100 km to mi: Convert units (supports m/ft, kg/lbs, c/f, b/kb/mb/gb).shutdown: Exit the environment.

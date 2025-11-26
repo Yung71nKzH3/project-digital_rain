@@ -24,14 +24,10 @@ TETROMINOES = [
     [[0, 0, 1], [1, 1, 1]],
 ]
 
-# Adjust this value to change the Tetris piece fall speed
 FALL_SPEED = 0.8
-# Adjust this value to change how often the rain updates
-# A higher value will make the rain move slower
 RAIN_UPDATE_SPEED = 0.1
-
-# --- Global Variables ---
 MATRIX_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+-=[]{};:'\"\\|,./<>?`~"
+
 streaks = []
 screen_height, screen_width = 0, 0
 
@@ -42,7 +38,6 @@ def create_streaks(width, height):
         x = random.randint(0, width - 1)
         y = random.randint(-height, 0)
         length = random.randint(10, 30)
-        # We can now set a fixed speed of 1 since RAIN_UPDATE_SPEED controls the overall pace
         speed = 1
         char_set = [random.choice(MATRIX_CHARS) for _ in range(length)]
         streaks.append({'x': x, 'y': y, 'length': length, 'speed': speed, 'char_set': char_set})
@@ -58,13 +53,12 @@ def draw_seamless_rain_background(stdscr, color_pair, update_rain=False):
             y_pos = streak['y'] + i
             x_pos = streak['x']
             
-            # Check if the coordinates are within the screen bounds
             if 0 <= y_pos < height and 0 <= x_pos < width:
                 char_to_draw = streak['char_set'][i]
                 try:
                     stdscr.addstr(y_pos, x_pos, char_to_draw, color_pair)
                 except curses.error:
-                    pass # Silently ignore the error if it still occurs
+                    pass
     
         if update_rain:
             streak['y'] += streak['speed']
@@ -76,37 +70,42 @@ def draw_seamless_rain_background(stdscr, color_pair, update_rain=False):
             streak['char_set'] = [random.choice(MATRIX_CHARS) for _ in range(streak['length'])]
 
 def draw_game_board_and_pieces(stdscr, board, current_piece, score, color_pair):
-    """Draws the Tetris game board and pieces on top of the rain."""
     height, width = stdscr.getmaxyx()
     board_start_y = (height - TETRIS_BOARD_HEIGHT) // 2
     board_start_x = (width - TETRIS_BOARD_WIDTH * 2) // 2
     
-    # Draw a black rectangle in the center for the game board
+    # Draw background box
     for y in range(TETRIS_BOARD_HEIGHT + 2):
         for x in range(TETRIS_BOARD_WIDTH * 2 + 2):
             if 0 <= board_start_y + y - 1 < height and 0 <= board_start_x + x - 1 < width:
-                # Use color_pair(2) with a space " " to draw the black rectangle
-                stdscr.addstr(board_start_y + y - 1, board_start_x + x - 1, " ", curses.color_pair(2))
+                try:
+                    stdscr.addstr(board_start_y + y - 1, board_start_x + x - 1, " ", curses.color_pair(2))
+                except curses.error: pass
 
-    # Draw the border and pieces
+    # Draw existing board pieces
     for y in range(TETRIS_BOARD_HEIGHT):
         for x in range(TETRIS_BOARD_WIDTH):
             if board[y][x] == 1:
-                stdscr.addstr(board_start_y + y, board_start_x + x * 2, "[]", color_pair)
+                try:
+                    stdscr.addstr(board_start_y + y, board_start_x + x * 2, "[]", color_pair)
+                except curses.error: pass
 
-    # Draw the current piece
+    # Draw current piece
     for y_piece, row in enumerate(current_piece['shape']):
         for x_piece, cell in enumerate(row):
             if cell == 1:
-                if 0 <= board_start_y + current_piece['y'] + y_piece < height and 0 <= board_start_x + (current_piece['x'] + x_piece) * 2 < width:
+                if 0 <= board_start_y + current_piece['y'] + y_piece < height:
                     char = random.choice(MATRIX_CHARS)
-                    stdscr.addstr(board_start_y + current_piece['y'] + y_piece, board_start_x + (current_piece['x'] + x_piece) * 2, char + " ", color_pair)
+                    try:
+                        stdscr.addstr(board_start_y + current_piece['y'] + y_piece, board_start_x + (current_piece['x'] + x_piece) * 2, char + " ", color_pair)
+                    except curses.error: pass
     
-    # Draw the score
     score_y = board_start_y + TETRIS_BOARD_HEIGHT + 2
     score_x = board_start_x
     if 0 <= score_y < height:
-        stdscr.addstr(score_y, score_x, f"Score: {score}", color_pair)
+        try:
+            stdscr.addstr(score_y, score_x, f"Score: {score}", color_pair)
+        except curses.error: pass
 
 def check_collision(board, piece, y, x):
     for row_idx, row in enumerate(piece):
@@ -114,7 +113,7 @@ def check_collision(board, piece, y, x):
             if cell == 1:
                 if x + col_idx < 0 or x + col_idx >= TETRIS_BOARD_WIDTH or y + row_idx >= TETRIS_BOARD_HEIGHT:
                     return True
-                if board[y + row_idx][x + col_idx] == 1:
+                if y + row_idx >= 0 and board[y + row_idx][x + col_idx] == 1:
                     return True
     return False
 
@@ -123,22 +122,15 @@ def rotate_piece(piece):
 
 def main(stdscr):
     global streaks, screen_height, screen_width
-    curses.curs_set(1)
+    
+    # --- SETUP ---
+    curses.curs_set(0) # Hide cursor for game
     stdscr.nodelay(True)
     stdscr.timeout(0)
-    new_height, new_width = stdscr.getmaxyx()
     
-    if (new_height, new_width) != (screen_height, new_width):
-        screen_height, screen_width = new_height, new_width
-        stdscr.clear()
-        streaks = create_streaks(screen_width, screen_height)
-        stdscr.refresh()
-
     if curses.has_colors():
         curses.start_color()
-        # Pair 1: Green foreground on a black background for the rain
         curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        # Pair 2: Black foreground on a black background for the void board
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLACK)
         color_pair = curses.color_pair(1)
     else:
@@ -151,6 +143,7 @@ def main(stdscr):
     score = 0
     game_over = False
     
+    # Spawn first piece correctly centered
     shape = random.choice(TETROMINOES)
     current_piece = {
         'shape': shape,
@@ -161,14 +154,13 @@ def main(stdscr):
     last_fall_time = time.time()
     last_rain_time = time.time()
     
+    # --- GAME LOOP ---
     while not game_over:
-        # Handle terminal resizing
         new_height, new_width = stdscr.getmaxyx()
         if (new_height, new_width) != (screen_height, new_width):
             screen_height, screen_width = new_height, new_width
             stdscr.clear()
             streaks = create_streaks(screen_width, screen_height)
-            stdscr.refresh()
         
         update_rain = False
         if time.time() - last_rain_time > RAIN_UPDATE_SPEED:
@@ -183,7 +175,7 @@ def main(stdscr):
         
         if key != -1:
             if key == ord('q'):
-                break
+                return # Exit back to Matrix, don't kill process
             elif key == curses.KEY_LEFT:
                 if not check_collision(board, current_piece['shape'], current_piece['y'], current_piece['x'] - 1):
                     current_piece['x'] -= 1
@@ -220,22 +212,27 @@ def main(stdscr):
                 if any(board[0]):
                     game_over = True
 
-                current_piece['shape'] = random.choice(TETROMINOES)
-                current_piece['x'] = TETRIS_BOARD_WIDTH // 2 - len(current_piece['shape'][0]) // 2
-                current_piece['y'] = 0
+                shape = random.choice(TETROMINOES)
+                current_piece = {
+                    'shape': shape,
+                    'x': TETRIS_BOARD_WIDTH // 2 - len(shape[0]) // 2,
+                    'y': 0
+                }
             else:
                 current_piece['y'] += 1
             last_fall_time = time.time()
             
         time.sleep(0.01)
 
+    # Game Over Screen
+    stdscr.nodelay(False) # Wait for input
     stdscr.clear()
+    msg = f"GAME OVER - Score: {score}"
+    h, w = stdscr.getmaxyx()
+    stdscr.addstr(h//2, (w-len(msg))//2, msg, color_pair | curses.A_BOLD)
+    stdscr.addstr(h//2 + 1, (w-20)//2, "Press any key to exit", color_pair)
     stdscr.refresh()
-    
-    if game_over:
-        sys.exit(f"Game Over! Score: {score}")
-    else:
-        sys.exit(f"Quitting. Final Score: {score}")
+    stdscr.getch()
 
 if __name__ == '__main__':
     curses.wrapper(main)
